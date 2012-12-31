@@ -50,8 +50,17 @@ class Fluent::ForestOutput < Fluent::Output
 
   def parameter(tag, e)
     pairs = {}
+    tags = tag.split('.')
     e.each do |k,v|
       pairs[k] = v.gsub('__TAG__', tag).gsub('${tag}', tag).gsub('__HOSTNAME__', @hostname).gsub('${hostname}', @hostname)
+      pairs[k].gsub!(/\$\{tag\[([-+.\d]+)\]\}/) do |match|
+        begin
+          r = eval("tags[#{$1}]")
+          r.instance_of?(Array) ? r.join('.') : r
+        rescue SyntaxError
+          match
+        end
+      end
     end
     Fluent::Config::Element.new('instance', '', pairs, [])
   end

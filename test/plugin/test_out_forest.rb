@@ -176,6 +176,62 @@ subtype hoge
     assert_equal 'd.zz.' + hostname, conf['alt_key']
   end
 
+  def test_spec_partial_tag
+    d = create_driver %[
+subtype hoge
+<template>
+  keyx xxxxxx
+  keyy yyyyyy.${tag}
+  alt_key a
+</template>
+<case xx>
+  keyz z1
+  alt_key b.${tag[0]}
+</case>
+<case yy.**>
+  keyz z2
+  alt_key c.${tag[1..-1]}
+</case>
+<case err.**>
+  keyz z4
+  alt_key e.${tag[-1]}.${tag[+]}.${tag[-]}.${tag[0]}
+</case>
+<case *>
+  keyz z3
+  alt_key d.${tag[0]}.${tag[1]}
+</case>
+    ]
+    conf = d.instance.spec('xx')
+    assert_equal 'xxxxxx', conf['keyx']
+    assert_equal 'yyyyyy.xx', conf['keyy']
+    assert_equal 'z1', conf['keyz']
+    assert_equal 'b.xx', conf['alt_key']
+
+    conf = d.instance.spec('yy')
+    assert_equal 'xxxxxx', conf['keyx']
+    assert_equal 'yyyyyy.yy', conf['keyy']
+    assert_equal 'z2', conf['keyz']
+    assert_equal 'c.', conf['alt_key']
+
+    conf = d.instance.spec('yy.3')
+    assert_equal 'xxxxxx', conf['keyx']
+    assert_equal 'yyyyyy.yy.3', conf['keyy']
+    assert_equal 'z2', conf['keyz']
+    assert_equal 'c.3', conf['alt_key']
+
+    conf = d.instance.spec('zz')
+    assert_equal 'xxxxxx', conf['keyx']
+    assert_equal 'yyyyyy.zz', conf['keyy']
+    assert_equal 'z3', conf['keyz']
+    assert_equal 'd.zz.', conf['alt_key']
+
+    conf = d.instance.spec('err.foo')
+    assert_equal 'xxxxxx', conf['keyx']
+    assert_equal 'yyyyyy.err.foo', conf['keyy']
+    assert_equal 'z4', conf['keyz']
+    assert_equal 'e.foo.${tag[+]}.${tag[-]}.err', conf['alt_key']
+  end
+
   def test_faild_plant
     d = create_driver
     time = Time.parse("2012-01-02 13:14:15").to_i
